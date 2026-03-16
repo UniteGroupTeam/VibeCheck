@@ -1,8 +1,3 @@
-/**
- * VibeCheck - Premium Engine
- * Version: 2.0 (Google UX Optimized)
- */
-
 class VibeEngine {
     constructor() {
         this.active = false;
@@ -14,6 +9,10 @@ class VibeEngine {
         this.sosActive = false;
         this.sosTimer = 10;
         this.sosInterval = null;
+        
+        // Contacts logic
+        this.contacts = JSON.parse(localStorage.getItem('vibe_contacts') || '[]');
+        this.isPro = false;
 
         // DOM Elements
         this.canvas = document.getElementById('vibe-canvas');
@@ -28,12 +27,30 @@ class VibeEngine {
         this.settingsPanel = document.getElementById('settings-panel');
         this.closePanelBtn = document.getElementById('close-panel');
         this.sensitivitySlider = document.getElementById('sensitivity-slider');
+        
+        // Contacts DOM
+        this.contactsBtn = document.getElementById('contacts-btn-trigger');
+        this.contactsModal = document.getElementById('contacts-modal');
+        this.closeContactsBtn = document.getElementById('close-contacts');
+        this.addContactBtn = document.getElementById('add-contact-btn');
+        this.contactsList = document.getElementById('contacts-list');
+        this.contactCountDisplay = document.getElementById('contact-count');
+        this.paywallModal = document.getElementById('paywall-modal');
+        this.closePaywallBtn = document.getElementById('close-paywall');
+
+        // PWA Install Logic
+        this.deferredPrompt = null;
+        this.installSnackbar = document.getElementById('pwa-snackbar');
+        this.installBtn = document.getElementById('pwa-install-btn');
+        this.navInstallBtn = document.getElementById('nav-install');
 
         this.init();
     }
 
     init() {
         this.setupCanvas();
+        this.renderContacts();
+        this.setupPWAInstall();
         window.addEventListener('resize', () => this.setupCanvas());
 
         // Event Listeners
@@ -46,9 +63,99 @@ class VibeEngine {
             this.dbThreshold = parseInt(e.target.value);
         });
 
-        document.getElementById('contacts-action').addEventListener('click', () => {
-             alert("Añade contactos seguros en la versión Pro (Lanzamiento próximamente).");
+        // Contacts listeners
+        this.contactsBtn.addEventListener('click', () => {
+             this.contactsModal.classList.add('open');
         });
+        this.closeContactsBtn.addEventListener('click', () => {
+             this.contactsModal.classList.remove('open');
+        });
+        this.addContactBtn.addEventListener('click', () => this.handleAddContact());
+        this.closePaywallBtn.addEventListener('click', () => this.paywallModal.classList.remove('visible'));
+    }
+
+    setupPWAInstall() {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            this.deferredPrompt = e;
+            
+            // Show snackbar for 15 seconds
+            this.installSnackbar.classList.remove('hidden');
+            setTimeout(() => {
+                this.installSnackbar.classList.add('hidden');
+            }, 15000);
+        });
+
+        const handleInstall = async () => {
+            if (this.deferredPrompt) {
+                this.deferredPrompt.prompt();
+                const { outcome } = await this.deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('User accepted the PWA install');
+                }
+                this.deferredPrompt = null;
+                this.installSnackbar.classList.add('hidden');
+            } else {
+                // iPhone / Support fallback
+                alert("Para instalar en iOS:\n1. Toca el botón 'Compartir' (cuadrado con flecha).\n2. Selecciona 'Añadir a la pantalla de inicio'.");
+            }
+        };
+
+        this.installBtn.addEventListener('click', handleInstall);
+        this.navInstallBtn.addEventListener('click', handleInstall);
+
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA installed');
+            this.installSnackbar.classList.add('hidden');
+        });
+    }
+
+    renderContacts() {
+        this.contactsList.innerHTML = '';
+        this.contacts.forEach((c, index) => {
+            const div = document.createElement('div');
+            div.className = 'contact-item';
+            div.innerHTML = `
+                <div class="contact-info">
+                    <span class="contact-name">${c.name}</span>
+                    <span class="contact-phone">${c.phone}</span>
+                </div>
+                <button class="icon-btn delete-contact" data-index="${index}" style="color: var(--md-sys-color-error)">
+                    <span class="material-icons-outlined">delete</span>
+                </button>
+            `;
+            this.contactsList.appendChild(div);
+        });
+
+        document.querySelectorAll('.delete-contact').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const index = e.currentTarget.dataset.index;
+                this.contacts.splice(index, 1);
+                this.saveContacts();
+            });
+        });
+
+        this.contactCountDisplay.textContent = this.contacts.length;
+    }
+
+    handleAddContact() {
+        if (this.contacts.length >= 3 && !this.isPro) {
+            this.paywallModal.classList.add('visible');
+            return;
+        }
+
+        const name = prompt("Nombre del contacto:");
+        const phone = prompt("Número de teléfono:");
+        
+        if (name && phone) {
+            this.contacts.push({ name, phone });
+            this.saveContacts();
+        }
+    }
+
+    saveContacts() {
+        localStorage.setItem('vibe_contacts', JSON.stringify(this.contacts));
+        this.renderContacts();
     }
 
     setupCanvas() {
@@ -70,26 +177,74 @@ class VibeEngine {
 
     async startEngine() {
         try {
+            // Updated GPS Warm-up and Status check
+            this.updateGPSStatus('Verificando...');
+            
             this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const source = audioCtx.createMediaStreamSource(this.stream);
-            this.analyser = audioCtx.createAnalyser();
-            this.analyser.fftSize = 512;
+            
+            // Re-sync Audio Context
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (this.audioCtx.state === 'suspended') {
+                await this.audioCtx.resume();
+            }
+
+            const source = this.audioCtx.createMediaStreamSource(this.stream);
+            this.analyser = this.audioCtx.createAnalyser();
+            this.analyser.fftSize = 256;
             source.connect(this.analyser);
 
             this.active = true;
             this.updateUI(true);
             this.render();
+            
+            // Warm up GPS immediately when monitoring starts
+            this.warmupGPS();
+            
+            this.vibrate(100);
+            console.log("VibeEngine Started");
         } catch (err) {
-            alert("VibeCheck requiere permisos de micrófono para funcionar.");
+            console.error(err);
+            alert("Error: Activa el micrófono y los permisos de ubicación.");
+        }
+    }
+
+    updateGPSStatus(status, isError = false) {
+        const el = document.getElementById('gps-status');
+        if (el) {
+            el.textContent = status;
+            el.style.color = isError ? 'var(--md-sys-color-error)' : 'inherit';
+        }
+    }
+
+    warmupGPS() {
+        if (!navigator.geolocation) {
+            this.updateGPSStatus('No compatible', true);
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            () => this.updateGPSStatus('Listo'),
+            (err) => {
+                console.warn("GPS Warmup failed:", err);
+                this.updateGPSStatus('Fallo / Sin Permiso', true);
+            },
+            { enableHighAccuracy: true, timeout: 5000 }
+        );
+    }
+
+    vibrate(pattern) {
+        if ("vibrate" in navigator) {
+            navigator.vibrate(pattern);
         }
     }
 
     stopEngine() {
         this.active = false;
         if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+        if (this.audioCtx) this.audioCtx.close();
         cancelAnimationFrame(this.animationId);
         this.updateUI(false);
+        this.updateGPSStatus('Inactivo');
     }
 
     updateUI(isActive) {
@@ -122,43 +277,29 @@ class VibeEngine {
         
         this.ctx.clearRect(0, 0, width, height);
 
-        // Organic Wave Visualizer (Google Style)
         this.ctx.beginPath();
-        this.ctx.moveTo(0, height / 2);
+        this.ctx.moveTo(0, height);
 
         let sum = 0;
         for (let i = 0; i < bufferLength; i++) {
             sum += dataArray[i];
             const x = (i / bufferLength) * width;
             const v = dataArray[i] / 128.0;
-            const y = (v * height) / 2;
+            const y = (v * height) / 1.5;
 
-            if (i === 0) this.ctx.moveTo(x, height - y);
-            else this.ctx.quadraticCurveTo(x - 5, height - y, x, height - y);
+            this.ctx.lineTo(x, height - y);
         }
 
         const avg = sum / bufferLength;
-        const db = Math.round(20 * Math.log10(avg + 1) * 1.5);
+        const dbValue = Math.round(avg * 0.8);
 
-        // Styling the wave
-        const gradient = this.ctx.createLinearGradient(0, 0, width, 0);
-        gradient.addColorStop(0, '#6543A3');
-        gradient.addColorStop(1, '#B19CD9');
-        
+        this.dbDisplay.textContent = dbValue;
         this.ctx.lineTo(width, height);
-        this.ctx.lineTo(0, height);
-        this.ctx.fillStyle = gradient;
-        this.ctx.globalAlpha = 0.4;
+        this.ctx.fillStyle = dbValue > this.dbThreshold ? 'rgba(186, 26, 26, 0.4)' : 'rgba(101, 67, 163, 0.3)';
         this.ctx.fill();
 
-        this.dbDisplay.textContent = db;
-
-        if (db > 40) { // UI feedback
-            this.peakDisplay.textContent = `${db} dB`;
-        }
-
-        if (db > this.dbThreshold && !this.sosActive) {
-            this.triggerSOS(db);
+        if (dbValue > this.dbThreshold && !this.sosActive) {
+            this.triggerSOS(dbValue);
         }
     }
 
@@ -167,10 +308,9 @@ class VibeEngine {
         this.sosOverlay.classList.add('visible');
         this.sosTimer = 10;
         this.sosTimeDisplay.textContent = this.sosTimer;
+        this.peakDisplay.textContent = `${db} dB`;
 
-        if ("vibrate" in navigator) {
-            navigator.vibrate([200, 100, 200, 100, 500]);
-        }
+        this.vibrate([1000, 500, 1000, 500, 1000]);
 
         this.sosInterval = setInterval(() => {
             this.sosTimer--;
@@ -187,32 +327,46 @@ class VibeEngine {
         this.sosActive = false;
         this.sosOverlay.classList.remove('visible');
         clearInterval(this.sosInterval);
-        if ("vibrate" in navigator) navigator.vibrate(0);
+        this.vibrate(0);
     }
 
     async finishSOS() {
         this.sosOverlay.classList.remove('visible');
         this.sosActive = false;
+        this.vibrate(0);
 
-        let coords = "Desconocida";
+        this.updateGPSStatus('Obteniendo ubicación...');
+        
+        let mapsLink = "Ubicación no disponible";
         try {
             const pos = await new Promise((res, rej) => {
-                navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 });
+                navigator.geolocation.getCurrentPosition(res, rej, { 
+                    enableHighAccuracy: true,
+                    timeout: 12000 // Increased timeout for better locks
+                });
             });
-            coords = `${pos.coords.latitude},${pos.coords.longitude}`;
-        } catch (e) {}
+            mapsLink = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+            this.updateGPSStatus('Listo');
+        } catch (e) {
+            console.error("GPS Full Error:", e);
+            this.updateGPSStatus('Error GPS', true);
+        }
 
-        const msg = `VibeCheck SOS: Evento detectado. Ubicación: https://www.google.com/maps?q=${coords}`;
+        const contactNames = this.contacts.map(c => c.name).join(', ');
+        const msg = `🚨 ALERTA VIBECHECK 🚨\nSe ha detectado una emergencia.\nMi ubicación: ${mapsLink}\nContactos avisados: ${contactNames || 'Sin contactos configurados'}`;
         
         if (navigator.share) {
-            await navigator.share({ title: 'Emergencia VibeCheck', text: msg });
+            await navigator.share({ 
+                title: 'Emergencia VibeCheck', 
+                text: msg,
+                url: mapsLink.includes('google.com') ? mapsLink : undefined
+            });
         } else {
-            prompt("Envía este mensaje SOS:", msg);
+            prompt("ATENCIÓN: Envía este mensaje de emergencia inmediatamente:", msg);
         }
     }
 }
 
-// Run
 document.addEventListener('DOMContentLoaded', () => {
-    new VibeEngine();
+    window.vibeApp = new VibeEngine();
 });

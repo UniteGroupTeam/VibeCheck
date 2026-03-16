@@ -74,9 +74,9 @@
                 <span class="material-icons-outlined">mic</span>
                 <span>Iniciar Escucha</span>
             </button>
-            <button id="contacts-action" class="btn-secondary">
+            <button id="contacts-btn-trigger" class="btn-secondary">
                 <span class="material-icons-outlined">people_alt</span>
-                <span>Contactos de Confianza</span>
+                <span>Contactos (<span id="contact-count">0</span>/3)</span>
             </button>
         </div>
 
@@ -115,6 +115,79 @@
 
             <button id="close-panel" class="btn-secondary" style="width:100%; margin-top:24px;">Confirmar</button>
         </div>
+        <!-- Contacts Management Modal -->
+        <div id="contacts-modal" class="side-panel">
+            <div class="panel-handle"></div>
+            <div class="modal-header-inline">
+                <h3>Contactos Seguros</h3>
+                <button id="add-contact-btn" class="icon-btn" style="color:var(--md-sys-color-primary)">
+                    <span class="material-icons-outlined">add_circle</span>
+                </button>
+            </div>
+            <p style="font-size: 13px; opacity: 0.7; margin-bottom: 20px;">Estos contactos recibirán tu ubicación en caso de emergencia.</p>
+            
+            <div id="contacts-list" class="contacts-list">
+                <!-- Contacts will be injected here -->
+            </div>
+
+            <button id="close-contacts" class="btn-secondary" style="width:100%; margin-top:24px;">Listo</button>
+        </div>
+
+        <!-- Paywall Modal (M3 Style) -->
+        <div id="paywall-modal" class="emergency-overlay" style="background: var(--md-sys-color-surface);">
+            <div class="brand" style="margin-bottom: 32px;">
+                <div class="app-logo"><span class="material-icons-outlined">workspace_premium</span></div>
+                <h1 style="color: var(--md-sys-color-primary)">VibeCheck Pro</h1>
+            </div>
+            
+            <h2 style="font-size: 28px; margin-bottom: 12px;">Límite alcanzado</h2>
+            <p style="margin-bottom: 40px; opacity: 0.8;">Agrega contactos ilimitados y funciones avanzadas de monitoreo.</p>
+
+            <div class="pricing-cards">
+                <div class="price-card selected">
+                    <span class="price-title">Mensual</span>
+                    <span class="price-val">$29.00</span>
+                    <span class="price-sub">MXN / mes</span>
+                </div>
+                <div class="price-card">
+                    <span class="price-title">Pase Diario</span>
+                    <span class="price-val">$15.00</span>
+                    <span class="price-sub">MXN / 24h</span>
+                </div>
+            </div>
+
+            <button class="btn-primary" style="width: 100%; max-width: 320px; margin-top: 32px; background: var(--md-sys-color-primary); color: white;">
+                SUSCRIBIRSE AHORA
+            </button>
+            <button id="close-paywall" class="btn-secondary" style="width: 100%; max-width: 320px; margin-top: 12px; background: transparent;">
+                Tal vez después
+            </button>
+        </div>
+        </div>
+
+        <!-- PWA Install Snackbar (Android/iOS) -->
+        <div id="pwa-snackbar" class="pwa-snackbar hidden">
+            <div class="snackbar-content">
+                <span class="material-icons-outlined">install_mobile</span>
+                <div class="snackbar-text">
+                    <strong>Instala VibeCheck</strong>
+                    <p>Acceso rápido y modo pantalla completa.</p>
+                </div>
+            </div>
+            <button id="pwa-install-btn" class="btn-snack">INSTALAR</button>
+        </div>
+
+        <!-- Bottom Navigation for PWA (Optional but requested) -->
+        <nav class="bottom-nav-pwa">
+            <button id="nav-home" class="nav-item-btn active">
+                <span class="material-icons-outlined">home</span>
+                <span>Inicio</span>
+            </button>
+            <button id="nav-install" class="nav-item-btn">
+                <span class="material-icons-outlined">download_for_offline</span>
+                <span>App</span>
+            </button>
+        </nav>
     </div>
 
     <script src="app.js" type="module"></script>
