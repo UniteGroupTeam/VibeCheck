@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>VibeCheck | Google Security</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#fdf7ff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1d1b20" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- Fonts: Outfit (Heading) & Roboto (Body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- New Aesthetic Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="app-logo">
+                    <span class="material-icons-outlined" style="font-size: 20px;">vibration</span>
+                </div>
+                <h1>VibeCheck</h1>
+            </div>
+            <button id="settings-btn" class="icon-btn">
+                <span class="material-icons-outlined">settings</span>
+            </button>
+        </header>
+
+        <main class="content">
+            <!-- Premium Visualizer Card -->
+            <section class="glass-card visualizer-card">
+                <div class="visualizer-meta">
+                    <div class="badge" id="status-badge">Seguro</div>
+                    <div class="icon-btn"><span class="material-icons-outlined">info</span></div>
+                </div>
+
+                <div class="canvas-container">
+                    <canvas id="vibe-canvas"></canvas>
+                </div>
+
+                <div class="reading-display">
+                    <div class="db-main" id="db-value">0</div>
+                    <div class="db-unit">DECIBELIOS (dB)</div>
+                </div>
+            </section>
+
+            <!-- Info Grid -->
+            <section class="action-grid">
+                <div class="stat-item">
+                    <span class="material-icons-outlined icon">graphic_eq</span>
+                    <span class="stat-label">PICO MÁXIMO</span>
+                    <span class="stat-value" id="peak-value">-- dB</span>
+                </div>
+                <div class="stat-item">
+                    <span class="material-icons-outlined icon">my_location</span>
+                    <span class="stat-label">GPS STATUS</span>
+                    <span class="stat-value" id="gps-status">Activo</span>
+                </div>
+            </section>
+        </main>
+
+        <!-- Dynamic CTA Container -->
+        <div class="cta-container">
+            <button id="main-action" class="btn-primary">
+                <span class="material-icons-outlined">mic</span>
+                <span>Iniciar Escucha</span>
+            </button>
+            <button id="contacts-action" class="btn-secondary">
+                <span class="material-icons-outlined">people_alt</span>
+                <span>Contactos de Confianza</span>
+            </button>
+        </div>
+
+        <!-- SOS Overlay (Google-style Emergency) -->
+        <div id="emergency-overlay" class="emergency-overlay">
+            <div class="sos-ring">
+                <div class="sos-timer" id="sos-timer">10</div>
+            </div>
+            <div class="sos-text">
+                <h2>¿Necesitas ayuda?</h2>
+                <p>Se ha detectado un evento inusual. El equipo de emergencia recibirá tu ubicación en segundos.</p>
+            </div>
+            <button id="cancel-sos" class="btn-cancel">ESTOY BIEN</button>
+        </div>
+
+        <!-- Floating Bottom Settings -->
+        <div id="settings-panel" class="side-panel">
+            <div class="panel-handle"></div>
+            <h3 style="margin-top:0">Ajustes de Seguridad</h3>
+            
+            <div class="setting-row">
+                <div class="setting-info">
+                    <h4>Sensibilidad de Impacto</h4>
+                    <p>Umbral de activación automático</p>
+                </div>
+                <input type="range" id="sensitivity-slider" min="60" max="100" value="85">
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-info">
+                    <h4>Vibración Progresiva</h4>
+                    <p>Haptics durante el monitoreo</p>
+                </div>
+                <button class="icon-btn" style="color:var(--md-sys-color-primary)"><span class="material-icons-outlined">toggle_on</span></button>
+            </div>
+
+            <button id="close-panel" class="btn-secondary" style="width:100%; margin-top:24px;">Confirmar</button>
+        </div>
+    </div>
+
+    <script src="app.js" type="module"></script>
+</body>
+</html>
